@@ -19,7 +19,7 @@ A passage cut from a **Document**, lying entirely within one structural unit of 
 _Avoid_: passage, segment, fragment
 
 **Référence**:
-The precise location a **Chunk** comes from — e.g. *AI Act, Article 6, §2*; *AI Act, Annexe III, point 4 a)*; *Note interne X, section 3*. Citations in answers point to Références.
+The precise location a **Chunk** comes from — e.g. *AI Act, Article 6, §2*; *AI Act, Annexe III, point 4*; *Note interne X, section 3*. Citations in answers point to Références.
 _Avoid_: source, citation, metadata
 
 **Portée**:
