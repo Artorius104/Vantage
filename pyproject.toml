@@ -3,7 +3,7 @@ name = "vantage"
 version = "0.1.0"
 description = "Enterprise Knowledge Copilot answering only from what each Rôle may see"
 requires-python = ">=3.12"
-dependencies = ["lxml>=5"]
+dependencies = ["lxml>=5", "pyyaml>=6"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
