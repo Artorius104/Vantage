@@ -1,6 +1,6 @@
 # Vantage — Enterprise Knowledge Copilot
 
-A conversational assistant for everyday questions and tasks that, whenever an answer depends on documents, answers only from European regulatory texts (AI Act, aviation, data protection, cybersecurity) and the fictional internal documents of a drone maker, the asker's role is allowed to see.
+A conversational assistant for everyday questions and tasks that, whenever an answer depends on documents, answers only from what the asker's role is allowed to see: European regulatory texts (AI Act, aviation, data protection, cybersecurity) and the fictional internal documents of a drone maker.
 
 ## Language
 
