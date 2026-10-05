@@ -1,0 +1,26 @@
+corpus_id: vantage-aerospace-demo-v1
+entreprise: Vantage Aerospace Systems SAS
+fiction: true
+langue: fr
+niveaux:
+  public: 0
+  interne: 9
+  confidentiel: 2
+roles:
+  Employe: [public]
+  Manager: [public, interne]
+  Conformite: [public, interne, confidentiel]
+documents:
+  - {id: VAS-POL-DOC-001, fichier: corpus/01_INTERNE_gouvernance_documentaire.md, pages: 5, niveau: interne}
+  - {id: VAS-POL-AI-002, fichier: corpus/02_INTERNE_gouvernance_IA.md, pages: 6, niveau: interne}
+  - {id: VAS-PRO-AI-014, fichier: corpus/03_INTERNE_assurance_IA_donnees.md, pages: 7, niveau: interne}
+  - {id: VAS-PRO-OPS-021, fichier: corpus/04_INTERNE_operations_UAS.md, pages: 6, niveau: interne}
+  - {id: VAS-PRO-SAF-030, fichier: corpus/05_INTERNE_incidents_signalement.md, pages: 5, niveau: interne}
+  - {id: VAS-PRO-CYB-040, fichier: corpus/06_INTERNE_cybersecurite_fournisseurs.md, pages: 5, niveau: interne}
+  - {id: VAS-PRO-DAT-050, fichier: corpus/07_INTERNE_donnees_RGPD.md, pages: 5, niveau: interne}
+  - {id: VAS-PRO-EXP-060, fichier: corpus/08_INTERNE_export_controle.md, pages: 4, niveau: interne}
+  - {id: VAS-PRO-CFG-070, fichier: corpus/09_INTERNE_configuration_maintenance.md, pages: 4, niveau: interne}
+  - {id: VAS-CAS-CONF-101, fichier: corpus/10_CONFIDENTIEL_cas_IA_ASTERION.md, pages: 3, niveau: confidentiel}
+  - {id: VAS-CAS-CONF-102, fichier: corpus/11_CONFIDENTIEL_incident_cyber_SOLSTICE.md, pages: 3, niveau: confidentiel}
+total_pages_estimees: 53
+note: Les sauts de page sont explicites. Le rendu réel dépend de l'outil et de la typographie.

@@ -1,6 +1,6 @@
 # Vantage — Enterprise Knowledge Copilot
 
-A conversational assistant for everyday questions and tasks that, whenever an answer depends on documents, answers only from the European AI regulation and fictional internal company documents the asker's role is allowed to see.
+A conversational assistant for everyday questions and tasks that, whenever an answer depends on documents, answers only from what the asker's role is allowed to see: European regulatory texts (AI Act, aviation, data protection, cybersecurity) and the fictional internal documents of a drone maker.
 
 ## Language
 
@@ -33,7 +33,7 @@ The sensitivity tier of a piece of content — exactly one of `public`, `interne
 _Avoid_: permission, clearance, visibility
 
 **`public`**:
-Official regulatory texts (AI Act, CNIL, EDPB) that anyone may read.
+Official regulatory texts and guidance (AI Act, aviation occurrence reporting, GDPR, NIS2, CNIL) that anyone may read.
 
 **`interne`**:
 Fictional internal company procedures and notes.
