@@ -1,0 +1,63 @@
+# Every raw source of the Corpus, one folder per source under data/raw/.
+# `python -m vantage.corpus.sources` checks each file and restores any missing
+# one, by downloading its `url` or extracting its `member` from the source's
+# `archive`.
+
+[[source]]
+id = "ai-act"
+title = "Règlement (UE) 2024/1689 — AI Act"
+files = [
+  { path = "ai-act-fr.html", url = "https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32024R1689" },
+]
+
+[[source]]
+id = "reg-376-2014"
+title = "Règlement (UE) no 376/2014 — notification des événements dans l'aviation civile"
+files = [
+  { path = "reg-376-2014-fr.html", url = "https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32014R0376" },
+]
+
+[[source]]
+id = "rgpd"
+title = "Règlement (UE) 2016/679 — RGPD"
+files = [
+  { path = "rgpd-fr.html", url = "https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32016R0679" },
+]
+
+[[source]]
+id = "nis2"
+title = "Directive (UE) 2022/2555 — NIS2"
+files = [
+  { path = "nis2-fr.html", url = "https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32022L2555" },
+]
+
+[[source]]
+id = "cnil"
+title = "CNIL — fiches pratiques IA"
+files = [
+  { path = "analyse-impact.html", url = "https://www.cnil.fr/fr/realiser-une-analyse-dimpact-si-necessaire" },
+  { path = "securite-developpement.html", url = "https://www.cnil.fr/fr/ia-garantir-la-securite-du-developpement" },
+  { path = "collecte-gestion-donnees.html", url = "https://www.cnil.fr/fr/tenir-compte-de-la-protection-des-donnees-dans-la-collecte-et-la-gestion-des-donnees" },
+  { path = "qualification-acteurs.html", url = "https://www.cnil.fr/fr/determiner-la-qualification-juridique-des-fournisseurs-de-systemes-dia" },
+]
+
+[[source]]
+id = "vantage-aerospace"
+title = "Vantage Aerospace Systems — Documents internes et confidentiels fictifs"
+archive = "vantage_aerospace_corpus.zip"
+files = [
+  { path = "manifest.yaml", member = "vantage_aerospace_corpus/manifest.yaml" },
+  { path = "README.md", member = "vantage_aerospace_corpus/README.md" },
+  { path = "RAPPORT_CONCEPTION.md", member = "vantage_aerospace_corpus/RAPPORT_CONCEPTION.md" },
+  { path = "corpus/01_INTERNE_gouvernance_documentaire.md", member = "vantage_aerospace_corpus/corpus/01_INTERNE_gouvernance_documentaire.md" },
+  { path = "corpus/02_INTERNE_gouvernance_IA.md", member = "vantage_aerospace_corpus/corpus/02_INTERNE_gouvernance_IA.md" },
+  { path = "corpus/03_INTERNE_assurance_IA_donnees.md", member = "vantage_aerospace_corpus/corpus/03_INTERNE_assurance_IA_donnees.md" },
+  { path = "corpus/04_INTERNE_operations_UAS.md", member = "vantage_aerospace_corpus/corpus/04_INTERNE_operations_UAS.md" },
+  { path = "corpus/05_INTERNE_incidents_signalement.md", member = "vantage_aerospace_corpus/corpus/05_INTERNE_incidents_signalement.md" },
+  { path = "corpus/06_INTERNE_cybersecurite_fournisseurs.md", member = "vantage_aerospace_corpus/corpus/06_INTERNE_cybersecurite_fournisseurs.md" },
+  { path = "corpus/07_INTERNE_donnees_RGPD.md", member = "vantage_aerospace_corpus/corpus/07_INTERNE_donnees_RGPD.md" },
+  { path = "corpus/08_INTERNE_export_controle.md", member = "vantage_aerospace_corpus/corpus/08_INTERNE_export_controle.md" },
+  { path = "corpus/09_INTERNE_configuration_maintenance.md", member = "vantage_aerospace_corpus/corpus/09_INTERNE_configuration_maintenance.md" },
+  { path = "corpus/10_CONFIDENTIEL_cas_IA_ASTERION.md", member = "vantage_aerospace_corpus/corpus/10_CONFIDENTIEL_cas_IA_ASTERION.md" },
+  { path = "corpus/11_CONFIDENTIEL_incident_cyber_SOLSTICE.md", member = "vantage_aerospace_corpus/corpus/11_CONFIDENTIEL_incident_cyber_SOLSTICE.md" },
+]

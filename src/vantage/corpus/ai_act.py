@@ -12,7 +12,6 @@ import argparse
 import json
 import re
 import sys
-import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -21,8 +20,7 @@ from lxml.html import HtmlElement
 
 from vantage.corpus.model import AccessLevel, Chunk, Portee
 
-SOURCE_URL = "https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32024R1689"
-RAW_PATH = Path("data/raw/ai-act-fr.html")
+RAW_PATH = Path("data/raw/ai-act/ai-act-fr.html")  # restored by vantage.corpus.sources
 DOCUMENT_ID = "ai-act"
 CITATION = "AI Act"
 MAX_CHARS = 2000
@@ -279,21 +277,11 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text.replace("\xa0", " ")).strip()
 
 
-def fetch(path: Path = RAW_PATH) -> None:
-    request = urllib.request.Request(SOURCE_URL, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(request) as response:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(response.read())
-
-
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("command", choices=["fetch", "chunk"])
+    parser.add_argument("command", choices=["chunk"])
     parser.add_argument("--raw", type=Path, default=RAW_PATH)
     args = parser.parse_args(argv)
-    if args.command == "fetch":
-        fetch(args.raw)
-        return
     for chunk in load_ai_act(args.raw):
         sys.stdout.write(json.dumps(chunk.to_dict(), ensure_ascii=False) + "\n")
 
