@@ -1,0 +1,11 @@
+# Qdrant for Vantage: `docker compose up -d`, then QDRANT_URL=http://localhost:6333
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-storage:/qdrant/storage
+
+volumes:
+  qdrant-storage:

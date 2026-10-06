@@ -3,3 +3,4 @@ docs/EnterpriseCopilot/
 __pycache__/
 *.egg-info/
 data/processed/
+data/qdrant/
