@@ -1,7 +1,3 @@
-import hashlib
-import math
-import re
-
 import pytest
 from qdrant_client import QdrantClient
 
@@ -11,31 +7,7 @@ from vantage.corpus.model import AccessLevel
 from vantage.rag.generation import REFUS, SYSTEM_PROMPT, answer
 from vantage.rag.index import CorpusIndex
 
-
-class HashingEmbedder:
-    """A deterministic bag-of-words stand-in for bge-m3: identical texts get identical vectors."""
-
-    dimension = 512
-
-    def embed(self, texts):
-        vectors = []
-        for text in texts:
-            vector = [0.0] * self.dimension
-            for word in re.findall(r"\w+", text.lower()):
-                vector[int(hashlib.md5(word.encode()).hexdigest(), 16) % self.dimension] += 1.0
-            norm = math.sqrt(sum(v * v for v in vector)) or 1.0
-            vectors.append([v / norm for v in vector])
-        return vectors
-
-
-class RecordingChat:
-    def __init__(self, reply="Réponse [AI Act, Article 6, §2]"):
-        self.reply = reply
-        self.calls = []
-
-    def complete(self, system, user):
-        self.calls.append((system, user))
-        return self.reply
+from fakes import HashingEmbedder, RecordingChat
 
 
 @pytest.fixture(scope="module")

@@ -9,23 +9,13 @@ otherwise it uses a local on-disk store under data/qdrant/.
 """
 
 import argparse
-import os
 import sys
-
-from qdrant_client import QdrantClient
 
 from vantage.access import Role
 from vantage.corpus import load_corpus
 from vantage.rag.embedding import BgeM3Embedder
 from vantage.rag.generation import answer, dev_model, reference_model
-from vantage.rag.index import CorpusIndex
-
-LOCAL_STORE = "data/qdrant"
-
-
-def _client() -> QdrantClient:
-    url = os.environ.get("QDRANT_URL")
-    return QdrantClient(url=url) if url else QdrantClient(path=LOCAL_STORE)
+from vantage.rag.index import CorpusIndex, qdrant_client_from_env
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -40,7 +30,7 @@ def main(argv: list[str] | None = None) -> None:
     ask.add_argument("--retrieve-only", action="store_true")
     args = parser.parse_args(argv)
 
-    index = CorpusIndex(_client(), BgeM3Embedder())
+    index = CorpusIndex(qdrant_client_from_env(), BgeM3Embedder())
     if args.command == "index":
         print(f"{index.build(load_corpus())} Chunks indexed")
         return
