@@ -1,6 +1,6 @@
 # Niveau d'accès filter and Fuite metrics first, cut order fixed in advance
 
-The original brief's plan built plain RAG in weeks 1–3 and left RBAC and the leak metric to week 4. Scope has since grown (Routage, stored Conversations, Portée, Décomposition, Faits canaris, Évaluation témoin, a split Jeu de référence) while the deadline stays at 4 weeks, so a week-3 overrun would squeeze out the very thing that makes Vantage different. We reorder: week 1 builds the Corpus with the Niveau d'accès filter from day one; week 2 commits the Jeu de référence test part, then measures both Fuite kinds and the Évaluation témoin on the single-search pipeline; week 3 adds the fixed graph and compares it with that baseline; week 4 is presentation (stored Conversations, UI, Portée conflict flagging, README, demo).
+The original brief's plan built plain RAG in weeks 1–3 and left RBAC and the leak metric to week 4. Scope has since grown (Routage, stored Conversations, Portée, Décomposition, Faits canaris, Évaluation témoin, a split Jeu de référence) while the deadline stays at 4 weeks, so a week-3 overrun would squeeze out the very thing that makes Vantage different. We reorder: week 1 builds the Corpus with the Niveau d'accès filter from day one; week 2 commits the Jeu de référence test part, then measures both Fuite kinds and the Évaluation témoin on the single-search pipeline; week 3 adds the fixed graph and compares it with that baseline; week 4 is presentation (stored Conversations, the Comparaison des Rôles view, Portée conflict flagging, README, demo).
 
 ## Consequences
 
@@ -11,6 +11,6 @@ If we fall behind, cuts happen in this order, first to go first:
 3. **Décomposition** — Reformulation stays; Réponses partielles come from a single search.
 4. **Stored Conversations** — kept in memory, still one Rôle per Conversation.
 
-The UI is Streamlit. Its stateless Comparaison des Rôles view carries the demo and outlasts stored Conversations if week 4 is squeezed.
+The UI is a FastAPI backend with a Next.js frontend, not Streamlit. It was started in week 1 because it is the base of the final platform (RAG, then agent), not a throwaway demo screen. Its stateless Comparaison des Rôles view carries the demo and outlasts stored Conversations if week 4 is squeezed.
 
 Never cut: the Niveau d'accès filter, both Fuite metrics, the Évaluation témoin, the committed test part of the Jeu de référence, Routage, and the baseline-vs-agent comparison. Any cut beyond this list is a new decision and gets recorded as such.

@@ -6,6 +6,7 @@ that filter is to build the index with `access_filter=False`, which exists
 solely for the Évaluation témoin.
 """
 
+import os
 import uuid
 import warnings
 from collections.abc import Iterable
@@ -18,6 +19,7 @@ from vantage.corpus.model import AccessLevel, Chunk, Portee
 from vantage.rag.embedding import Embedder, chunk_text_for_embedding
 
 COLLECTION = "corpus"
+LOCAL_STORE = "data/qdrant"
 _BATCH = 64
 
 
@@ -25,6 +27,12 @@ _BATCH = 64
 class ScoredChunk:
     chunk: Chunk
     score: float
+
+
+def qdrant_client_from_env() -> QdrantClient:
+    """Docker Qdrant when QDRANT_URL is set, otherwise a local on-disk store (one process at a time)."""
+    url = os.environ.get("QDRANT_URL")
+    return QdrantClient(url=url) if url else QdrantClient(path=LOCAL_STORE)
 
 
 class CorpusIndex:
