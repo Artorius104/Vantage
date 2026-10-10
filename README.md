@@ -1,25 +1,65 @@
 # Vantage
 
-Assistant documentaire qui ne répond qu'à partir de ce que le Rôle de la personne qui pose la question peut consulter. Vocabulaire : [`CONTEXT.md`](CONTEXT.md). Décisions : [`docs/adr/`](docs/adr/).
+Assistant documentaire qui ne répond qu'à partir de ce que le Rôle de la personne qui pose la question peut consulter : textes réglementaires européens (`public`), procédures internes (`interne`) et dossiers sensibles (`confidentiel`) d'une entreprise fictive de drones. Vocabulaire : [`CONTEXT.md`](CONTEXT.md). Décisions : [`docs/adr/`](docs/adr/).
 
-## Lancer en local
-
-Prérequis : Python 3.12+, Node.js 20+, et un LLM (Ollama avec `ministral-3:8b` pour le développement, ou `MISTRAL_API_KEY` pour le modèle de référence).
+## Démarrage rapide
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
-.venv/bin/python -m vantage.corpus.sources       # vérifie et restaure les sources brutes
-.venv/bin/python -m vantage.rag index            # embeddings bge-m3 + Qdrant (~4 min sur GPU)
-
-.venv/bin/uvicorn vantage.api.app:app --port 8000   # API ; VANTAGE_LLM=mistral pour le modèle de référence
-cd web && npm install && npm run dev                # interface sur http://localhost:3000
+./vantage start
 ```
 
-Qdrant tourne en local sur disque (`data/qdrant/`), ou dans Docker avec `docker compose up -d` et `QDRANT_URL=http://localhost:6333`. Le stockage local n'accepte qu'un processus à la fois : arrêtez l'API avant de relancer `vantage.rag index`.
+Cette commande vérifie chaque brique et répare ce qui manque. Elle lance ensuite l'API et l'interface. Ouvrez **http://localhost:3000**. Ctrl+C arrête tout.
 
-## Tests
+Prérequis : Python 3.12+ et Node.js 20+. Il faut aussi un LLM : Ollama avec `ministral-3:8b` pour le développement, ou `MISTRAL_API_KEY` pour le modèle de référence (ADR 0007). Un GPU NVIDIA est conseillé, mais pas obligatoire.
 
-```bash
-.venv/bin/pytest
-cd web && npm run lint
+## Commandes
+
+| Commande | Effet |
+|---|---|
+| `./vantage check` | Vérifie toutes les briques, sans rien modifier. Sort en erreur si l'une d'elles bloque. |
+| `./vantage setup` | Crée le venv Python, installe les dépendances Python et npm, restaure les sources brutes manquantes et construit l'index si besoin. |
+| `./vantage start` | `setup` puis `check`, puis lance l'API (port 8000) et l'interface en mode développement (port 3000). |
+| `./vantage start --prod` | Pareil, avec l'interface compilée (`next build` puis `next start`). |
+| `./vantage start --llm mistral` | Utilise le modèle de référence (API Mistral) au lieu de Ministral en local. |
+| `./vantage index` | Reconstruit l'index Qdrant : embeddings bge-m3, environ 4 min sur GPU. |
+| `./vantage test` | Lance les tests Python, puis le lint et la vérification de types du frontend. |
+
+`check` contrôle, dans l'ordre :
+
+| Brique | Ce qui est vérifié | Réparé par `setup` / `start` |
+|---|---|---|
+| Sources brutes | Chaque fichier de `data/sources.toml` est présent. | Oui : téléchargement ou extraction du zip. |
+| Corpus | L'ingestion produit des Chunks des trois niveaux. | — |
+| Index Qdrant | La collection existe et contient autant de points que le corpus de Chunks. | Oui : reconstruction. |
+| LLM | Ollama répond et le modèle est installé, ou la clé Mistral est acceptée. | — |
+| GPU | CUDA est disponible. C'est un simple avertissement : sans GPU, les embeddings tournent sur CPU. | — |
+| Interface web | npm est présent et les dépendances sont installées. | Oui : `npm install`. |
+| Ports | 8000 et 3000 sont libres. | — |
+
+Variables d'environnement :
+
+| Variable | Rôle | Valeur par défaut |
+|---|---|---|
+| `API_PORT`, `WEB_PORT` | Ports de l'API et de l'interface | `8000`, `3000` |
+| `VANTAGE_LLM` | `ollama` ou `mistral` | `ollama` |
+| `MISTRAL_API_KEY` | Clé de l'API Mistral | — |
+| `OLLAMA_URL`, `VANTAGE_OLLAMA_MODEL` | Adresse d'Ollama et modèle utilisé | `http://localhost:11434`, `ministral-3:8b` |
+| `QDRANT_URL` | Qdrant dans Docker (`docker compose up -d`) | stockage local dans `data/qdrant/` |
+
+Le stockage Qdrant local n'accepte qu'un processus à la fois. `check` le signale si l'API tourne déjà.
+
+## Architecture
+
 ```
+data/raw/            sources brutes, un dossier par source (data/sources.toml)
+src/vantage/corpus/  ingestion : AI Act (EUR-Lex) et Documents internes → Chunks
+src/vantage/rag/     index Qdrant filtré par Niveau d'accès, génération avec Références
+src/vantage/api/     API FastAPI : /api/roles, /api/chat (flux SSE)
+src/vantage/doctor.py  vérifications et réparations utilisées par ./vantage
+web/                 interface Next.js, qui relaie /api vers FastAPI
+```
+
+Chaque module peut aussi se lancer seul :
+- `python -m vantage.corpus.sources` restaure les sources brutes ;
+- `python -m vantage.rag ask --role Manager "…"` pose une question en ligne de commande ;
+- `python -m vantage.doctor` lance les vérifications.
