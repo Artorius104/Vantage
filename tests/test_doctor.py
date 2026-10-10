@@ -44,16 +44,24 @@ def test_unreachable_ollama_blocks(monkeypatch):
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]  # bound but not listening: connection refused
         monkeypatch.setenv("OLLAMA_URL", f"http://127.0.0.1:{port}")
-        monkeypatch.delenv("VANTAGE_LLM", raising=False)
+        monkeypatch.setenv("VANTAGE_LLM", "ollama")
         result = doctor.check_llm()
     assert not result.ok and result.blocking and "injoignable" in result.detail
 
 
 def test_reference_model_without_key_blocks(monkeypatch):
-    monkeypatch.setenv("VANTAGE_LLM", "mistral")
-    monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+    monkeypatch.delenv("VANTAGE_LLM", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     result = doctor.check_llm()
-    assert not result.ok and "MISTRAL_API_KEY" in result.detail
+    assert not result.ok and result.blocking and "ANTHROPIC_API_KEY" in result.detail
+
+
+def test_missing_dev_model_only_warns(monkeypatch):
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        monkeypatch.setenv("OLLAMA_URL", f"http://127.0.0.1:{sock.getsockname()[1]}")
+        result = doctor.check_ollama(blocking=False)
+    assert not result.ok and not result.blocking
 
 
 def test_busy_port_is_reported():

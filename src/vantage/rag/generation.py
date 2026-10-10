@@ -1,25 +1,32 @@
 """Answer generation from retrieved Chunks only, with their Références.
 
-Both the Mistral API and Ollama expose an OpenAI-compatible chat endpoint, so
-one small client serves the reference model and the local dev model (ADR 0007).
+The reference model is Claude Haiku 4.5, called through the Anthropic SDK
+(ADR 0007): every published number and the demo come from it. Ministral 8B,
+served by a local Ollama through its OpenAI-compatible endpoint, is kept for
+free iteration during development only.
 """
 
 import json
 import os
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
+import anthropic
 import httpx
 
 from vantage.rag.index import ScoredChunk
+
+REFERENCE_MODEL = "claude-haiku-4-5"
+MAX_TOKENS = 16000
 
 REFUS = "Je ne trouve pas d'information permettant de répondre à cette question dans les documents auxquels vous avez accès."
 
 SYSTEM_PROMPT = f"""Tu es Vantage, l'assistant documentaire de Vantage Aerospace Systems.
 Réponds en français, uniquement à partir des extraits fournis. N'utilise jamais tes connaissances générales, même pour compléter.
-Après chaque affirmation, cite entre crochets la Référence exacte de l'extrait qui la justifie, par exemple [AI Act, Article 6, §2].
-Si les extraits ne permettent pas de répondre, réponds exactement et uniquement : {REFUS}"""
+Après chaque affirmation, cite entre crochets la Référence de l'extrait qui la justifie, recopiée caractère pour caractère depuis l'en-tête de cet extrait, par exemple [AI Act, Article 6, §2]. N'invente, n'abrège et ne complète jamais une Référence.
+Si les extraits ne permettent pas de répondre, réponds exactement et uniquement : {REFUS}
+Dans ce cas, n'ajoute aucune explication ni aucune autre phrase."""
 
 
 class ChatModel(Protocol):
@@ -30,8 +37,37 @@ class ChatModel(Protocol):
         ...
 
 
+@dataclass
+class ClaudeChat:
+    """Claude through the Anthropic SDK; the key comes from ANTHROPIC_API_KEY."""
+
+    model: str = REFERENCE_MODEL
+    client: anthropic.Anthropic = field(default_factory=anthropic.Anthropic)
+
+    def complete(self, system: str, user: str) -> str:
+        response = self.client.messages.create(**self._request(system, user))
+        return "".join(block.text for block in response.content if block.type == "text").strip()
+
+    def stream(self, system: str, user: str) -> Iterator[str]:
+        with self.client.messages.stream(**self._request(system, user)) as stream:
+            yield from stream.text_stream
+
+    def _request(self, system: str, user: str) -> dict:
+        return {
+            "model": self.model,
+            "max_tokens": MAX_TOKENS,
+            # SDK 1.x dropped the sampling keyword arguments; Haiku 4.5 still honours
+            # temperature, and reproducible measurements depend on it.
+            "extra_body": {"temperature": 0},
+            "system": system,
+            "messages": [{"role": "user", "content": user}],
+        }
+
+
 @dataclass(frozen=True)
 class OpenAICompatibleChat:
+    """An OpenAI-compatible chat endpoint; used for Ollama."""
+
     base_url: str
     model: str
     api_key: str | None = None
@@ -75,12 +111,11 @@ class OpenAICompatibleChat:
         }
 
 
-def reference_model() -> OpenAICompatibleChat:
-    """Mistral Small through the Mistral API: the only model behind published numbers."""
-    api_key = os.environ.get("MISTRAL_API_KEY")
-    if not api_key:
-        raise RuntimeError("MISTRAL_API_KEY is not set")
-    return OpenAICompatibleChat("https://api.mistral.ai/v1", os.environ.get("VANTAGE_MISTRAL_MODEL", "mistral-small-latest"), api_key)
+def reference_model() -> ClaudeChat:
+    """Claude Haiku 4.5: the only model behind published numbers."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise RuntimeError("ANTHROPIC_API_KEY is not set (put it in .env)")
+    return ClaudeChat()
 
 
 def dev_model() -> OpenAICompatibleChat:
@@ -91,9 +126,9 @@ def dev_model() -> OpenAICompatibleChat:
     )
 
 
-def model_from_env() -> OpenAICompatibleChat:
-    """VANTAGE_LLM=mistral selects the reference model; anything else, the local dev model."""
-    return reference_model() if os.environ.get("VANTAGE_LLM", "ollama") == "mistral" else dev_model()
+def model_from_env() -> ChatModel:
+    """VANTAGE_LLM=ollama selects the local dev model; otherwise the reference model."""
+    return dev_model() if os.environ.get("VANTAGE_LLM", "claude") == "ollama" else reference_model()
 
 
 @dataclass(frozen=True)
@@ -110,15 +145,42 @@ def answer(question: str, retrieved: list[ScoredChunk], model: ChatModel) -> Ans
     """Generate from the retrieved Chunks; with nothing retrieved, the Refus without asking the model."""
     if not retrieved:
         return Answer(REFUS, ())
-    return Answer(model.complete(SYSTEM_PROMPT, _user_prompt(question, retrieved)), tuple(retrieved))
+    text = model.complete(SYSTEM_PROMPT, _user_prompt(question, retrieved))
+    return Answer(REFUS if _starts_with_refus(text) else text, tuple(retrieved))
 
 
 def stream_answer(question: str, retrieved: list[ScoredChunk], model: ChatModel) -> Iterator[str]:
-    """Same contract as `answer`, delivered piece by piece."""
+    """Same contract as `answer`, delivered piece by piece.
+
+    The Refus must be word for word the same for every Rôle, so whatever a model
+    adds after it is cut here, in code: the opening is held back until it either
+    proves to be the Refus (then only the fixed wording is sent) or diverges from it.
+    """
     if not retrieved:
         yield REFUS
         return
-    yield from model.stream(SYSTEM_PROMPT, _user_prompt(question, retrieved))
+    held = ""
+    for piece in model.stream(SYSTEM_PROMPT, _user_prompt(question, retrieved)):
+        if held is None:
+            yield piece
+            continue
+        held += piece
+        if _starts_with_refus(held):
+            yield REFUS
+            return
+        if not _normalise(REFUS).startswith(_normalise(held.lstrip())):
+            yield held
+            held = None
+    if held:
+        yield held
+
+
+def _starts_with_refus(text: str) -> bool:
+    return _normalise(text.lstrip()).startswith(_normalise(REFUS))
+
+
+def _normalise(text: str) -> str:
+    return text.replace("\u2019", "'")
 
 
 def _user_prompt(question: str, retrieved: list[ScoredChunk]) -> str:

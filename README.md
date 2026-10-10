@@ -10,7 +10,7 @@ Assistant documentaire qui ne répond qu'à partir de ce que le Rôle de la pers
 
 Cette commande vérifie chaque brique et répare ce qui manque. Elle lance ensuite l'API et l'interface. Ouvrez **http://localhost:3000**. Ctrl+C arrête tout.
 
-Prérequis : Python 3.12+ et Node.js 20+. Il faut aussi un LLM : Ollama avec `ministral-3:8b` pour le développement, ou `MISTRAL_API_KEY` pour le modèle de référence (ADR 0007). Un GPU NVIDIA est conseillé, mais pas obligatoire.
+Prérequis : Python 3.12+ et Node.js 20+. Il faut aussi une clé API Anthropic pour le modèle de référence, Claude Haiku 4.5 (ADR 0007). Elle va dans un fichier `.env` à la racine (`ANTHROPIC_API_KEY=…`), ignoré par git. Ollama avec `ministral-3:8b` est optionnel : il sert à développer sans payer d'appels. Un GPU NVIDIA est conseillé, mais pas obligatoire.
 
 ## Commandes
 
@@ -20,7 +20,7 @@ Prérequis : Python 3.12+ et Node.js 20+. Il faut aussi un LLM : Ollama avec `mi
 | `./vantage setup` | Crée le venv Python, installe les dépendances Python et npm, restaure les sources brutes manquantes et construit l'index si besoin. |
 | `./vantage start` | `setup` puis `check`, puis lance l'API (port 8000) et l'interface en mode développement (port 3000). |
 | `./vantage start --prod` | Pareil, avec l'interface compilée (`next build` puis `next start`). |
-| `./vantage start --llm mistral` | Utilise le modèle de référence (API Mistral) au lieu de Ministral en local. |
+| `./vantage start --llm ollama` | Utilise Ministral 8B en local (développement) au lieu de Claude Haiku. |
 | `./vantage index` | Reconstruit l'index Qdrant : embeddings bge-m3, environ 4 min sur GPU. |
 | `./vantage test` | Lance les tests Python, puis le lint et la vérification de types du frontend. |
 
@@ -31,7 +31,8 @@ Prérequis : Python 3.12+ et Node.js 20+. Il faut aussi un LLM : Ollama avec `mi
 | Sources brutes | Chaque fichier de `data/sources.toml` est présent. | Oui : téléchargement ou extraction du zip. |
 | Corpus | L'ingestion produit des Chunks des trois niveaux. | — |
 | Index Qdrant | La collection existe et contient autant de points que le corpus de Chunks. | Oui : reconstruction. |
-| LLM | Ollama répond et le modèle est installé, ou la clé Mistral est acceptée. | — |
+| LLM | La clé Anthropic est présente et donne accès à `claude-haiku-4-5`, ou, avec `--llm ollama`, Ollama répond avec son modèle. | — |
+| LLM de dev | Ollama et `ministral-3:8b`. C'est un simple avertissement : seul `--llm ollama` en a besoin. | — |
 | GPU | CUDA est disponible. C'est un simple avertissement : sans GPU, les embeddings tournent sur CPU. | — |
 | Interface web | npm est présent et les dépendances sont installées. | Oui : `npm install`. |
 | Ports | 8000 et 3000 sont libres. | — |
@@ -41,8 +42,8 @@ Variables d'environnement :
 | Variable | Rôle | Valeur par défaut |
 |---|---|---|
 | `API_PORT`, `WEB_PORT` | Ports de l'API et de l'interface | `8000`, `3000` |
-| `VANTAGE_LLM` | `ollama` ou `mistral` | `ollama` |
-| `MISTRAL_API_KEY` | Clé de l'API Mistral | — |
+| `VANTAGE_LLM` | `claude` ou `ollama` | `claude` |
+| `ANTHROPIC_API_KEY` | Clé de l'API Anthropic, lue dans `.env` | — |
 | `OLLAMA_URL`, `VANTAGE_OLLAMA_MODEL` | Adresse d'Ollama et modèle utilisé | `http://localhost:11434`, `ministral-3:8b` |
 | `QDRANT_URL` | Qdrant dans Docker (`docker compose up -d`) | stockage local dans `data/qdrant/` |
 

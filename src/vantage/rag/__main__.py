@@ -11,6 +11,8 @@ otherwise it uses a local on-disk store under data/qdrant/.
 import argparse
 import sys
 
+from dotenv import find_dotenv, load_dotenv
+
 from vantage.access import Role
 from vantage.corpus import load_corpus
 from vantage.rag.embedding import BgeM3Embedder
@@ -19,6 +21,7 @@ from vantage.rag.index import CorpusIndex, qdrant_client_from_env
 
 
 def main(argv: list[str] | None = None) -> None:
+    load_dotenv(find_dotenv(usecwd=True))
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("index")
@@ -26,7 +29,7 @@ def main(argv: list[str] | None = None) -> None:
     ask.add_argument("question")
     ask.add_argument("--role", type=Role, choices=list(Role), required=True)
     ask.add_argument("--limit", type=int, default=5)
-    ask.add_argument("--llm", choices=["mistral", "ollama"], default="mistral")
+    ask.add_argument("--llm", choices=["claude", "ollama"], default="claude")
     ask.add_argument("--retrieve-only", action="store_true")
     args = parser.parse_args(argv)
 
@@ -40,7 +43,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"{scored.score:.3f}  [{scored.chunk.access_level}] {scored.chunk.reference}", file=sys.stderr)
     if args.retrieve_only:
         return
-    model = reference_model() if args.llm == "mistral" else dev_model()
+    model = reference_model() if args.llm == "claude" else dev_model()
     print(answer(args.question, retrieved, model).text)
 
 

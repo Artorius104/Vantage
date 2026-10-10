@@ -4,7 +4,7 @@ from qdrant_client import QdrantClient
 from vantage.access import Role
 from vantage.corpus import load_corpus
 from vantage.corpus.model import AccessLevel
-from vantage.rag.generation import REFUS, SYSTEM_PROMPT, answer
+from vantage.rag.generation import REFUS, SYSTEM_PROMPT, answer, stream_answer
 from vantage.rag.index import CorpusIndex
 
 from fakes import HashingEmbedder, RecordingChat
@@ -86,3 +86,31 @@ def test_nothing_retrieved_gives_the_refus_without_calling_the_model():
     result = answer("Question", [], chat)
     assert result.is_refus and result.text == REFUS
     assert chat.calls == []
+
+
+class StreamingChat:
+    def __init__(self, pieces):
+        self.pieces = pieces
+
+    def complete(self, system, user):
+        return "".join(self.pieces)
+
+    def stream(self, system, user):
+        yield from self.pieces
+
+
+def _one_chunk(index):
+    return index.search("systèmes d'IA à haut risque", Role.EMPLOYE, limit=1)
+
+
+def test_refus_followed_by_an_explanation_is_cut_to_the_fixed_wording(index):
+    head = "Je ne trouve pas d’information permettant"  # typographic apostrophe, as models often write it
+    pieces = ["Je ne trouve pas d", head[18:], REFUS[len(head):], "\n\nLes extraits fournis concernent l'AI Act."]
+    retrieved = _one_chunk(index)
+    assert "".join(stream_answer("q", retrieved, StreamingChat(pieces))) == REFUS
+    assert answer("q", retrieved, StreamingChat(pieces)).text == REFUS
+
+
+def test_ordinary_answer_streams_through_unchanged(index):
+    pieces = ["Je ", "ne peux ", "que citer [AI Act, Article 6, §2]."]
+    assert "".join(stream_answer("q", _one_chunk(index), StreamingChat(pieces))) == "Je ne peux que citer [AI Act, Article 6, §2]."
