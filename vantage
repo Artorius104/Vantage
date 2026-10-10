@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# Vantage in one command. Run `./vantage help` for the list of commands.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+PY="$ROOT/.venv/bin/python"
+API_PORT="${API_PORT:-8000}"
+WEB_PORT="${WEB_PORT:-3000}"
+export API_PORT WEB_PORT
+
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+fail() { printf '\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
+
+usage() {
+  cat <<EOF
+Usage : ./vantage <commande> [options]
+
+  check            Vérifie chaque brique (sources, corpus, index, LLM, GPU, web, ports) sans rien modifier.
+  setup            Installe et répare ce qui manque : venv Python, dépendances, sources, index, npm.
+  start [options]  setup + check, puis lance l'API et l'interface ; Ctrl+C arrête tout.
+      --prod           interface compilée (next build + start) au lieu du mode développement
+      --llm mistral    modèle de référence (MISTRAL_API_KEY requise) au lieu de Ministral local
+  index            Reconstruit l'index Qdrant (embeddings bge-m3).
+  test             Tests Python, lint et types du frontend.
+
+Variables : API_PORT (8000), WEB_PORT (3000), QDRANT_URL, VANTAGE_LLM, MISTRAL_API_KEY.
+EOF
+}
+
+ensure_python() {
+  command -v python3 >/dev/null || fail "python3 introuvable (3.12+ requis)"
+  if [[ ! -x "$PY" ]]; then
+    bold "Création de l'environnement Python (.venv)…"
+    python3 -m venv .venv
+  fi
+  if ! "$PY" -c "import vantage.doctor, fastapi, qdrant_client, sentence_transformers" 2>/dev/null; then
+    bold "Installation des dépendances Python…"
+    "$PY" -m pip install -q --upgrade pip
+    "$PY" -m pip install -q -e '.[dev]'
+  fi
+}
+
+require_venv() {
+  [[ -x "$PY" ]] || fail "Pas d'environnement Python : lancez d'abord ./vantage setup"
+}
+
+pids=()
+interrupted=false
+stop_all() {
+  trap - EXIT INT TERM
+  if ((${#pids[@]})); then
+    echo
+    bold "Arrêt de Vantage…"
+    for pid in "${pids[@]}"; do
+      pkill -TERM -P "$pid" 2>/dev/null || true
+      kill -TERM "$pid" 2>/dev/null || true
+    done
+    wait 2>/dev/null || true
+  fi
+}
+
+wait_for() { # url, name, timeout in seconds
+  for ((i = 0; i < $3; i++)); do
+    curl -sf -o /dev/null "$1" && return 0
+    for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null || fail "$2 s'est arrêté au démarrage (voir les logs ci-dessus)"; done
+    sleep 1
+  done
+  fail "$2 ne répond pas après $3 s"
+}
+
+start() {
+  local prod=false
+  while (($#)); do
+    case "$1" in
+      --prod) prod=true ;;
+      --llm) shift; export VANTAGE_LLM="${1:?--llm attend mistral ou ollama}" ;;
+      *) fail "option inconnue : $1" ;;
+    esac
+    shift
+  done
+
+  ensure_python
+  bold "Vérification et réparation…"
+  "$PY" -m vantage.doctor --fix || fail "Vantage ne peut pas démarrer : corrigez les points ✗ ci-dessus."
+
+  trap stop_all EXIT
+  trap 'interrupted=true' INT TERM
+  bold "Démarrage de l'API (port $API_PORT)…"
+  "$ROOT/.venv/bin/uvicorn" vantage.api.app:app --port "$API_PORT" > >(sed -u 's/^/[api] /') 2>&1 &
+  pids+=($!)
+
+  if $prod; then
+    bold "Compilation de l'interface…"
+    npm --prefix web run build > >(sed -u 's/^/[web] /') 2>&1
+    bold "Démarrage de l'interface (port $WEB_PORT)…"
+    npm --prefix web run start -- -p "$WEB_PORT" > >(sed -u 's/^/[web] /') 2>&1 &
+  else
+    bold "Démarrage de l'interface en mode développement (port $WEB_PORT)…"
+    npm --prefix web run dev -- -p "$WEB_PORT" > >(sed -u 's/^/[web] /') 2>&1 &
+  fi
+  pids+=($!)
+
+  wait_for "http://localhost:$API_PORT/api/roles" "L'API" 180
+  wait_for "http://localhost:$WEB_PORT" "L'interface" 120
+  echo
+  bold "Vantage est prêt : http://localhost:$WEB_PORT   (API : http://localhost:$API_PORT/docs)"
+  bold "LLM : ${VANTAGE_LLM:-ollama} · Ctrl+C pour tout arrêter"
+  wait -n "${pids[@]}" || true
+  $interrupted || fail "Un service s'est arrêté ; arrêt de Vantage."
+}
+
+case "${1:-help}" in
+  check) require_venv; "$PY" -m vantage.doctor ;;
+  setup) ensure_python; "$PY" -m vantage.doctor --fix --no-ports ;;
+  start) shift; start "$@" ;;
+  index) require_venv; "$PY" -m vantage.rag index ;;
+  test)
+    require_venv
+    "$PY" -m pytest
+    npm --prefix web run lint
+    (cd web && npx tsc --noEmit)
+    bold "Tous les tests passent."
+    ;;
+  help | -h | --help) usage ;;
+  *) usage; exit 1 ;;
+esac
