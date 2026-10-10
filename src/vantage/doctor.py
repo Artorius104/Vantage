@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
+from dotenv import find_dotenv, load_dotenv
 
 WEB_DIR = Path("web")
 
@@ -83,29 +84,46 @@ def check_index(expected: int, client_factory=None) -> Result:
 
 
 def check_llm() -> Result:
+    """The model answers will come from: Claude Haiku (reference) unless VANTAGE_LLM=ollama."""
+    if os.environ.get("VANTAGE_LLM", "claude") == "ollama":
+        return check_ollama(blocking=True)
+    return check_claude()
+
+
+def check_claude() -> Result:
+    import anthropic
+
+    from vantage.rag.generation import REFERENCE_MODEL
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return Result("LLM", False, "ANTHROPIC_API_KEY absente (à mettre dans .env)")
+    try:
+        anthropic.Anthropic(max_retries=0, timeout=10).models.retrieve(REFERENCE_MODEL)
+    except anthropic.AuthenticationError:
+        return Result("LLM", False, "clé Anthropic refusée (ANTHROPIC_API_KEY)")
+    except anthropic.PermissionDeniedError:
+        return Result("LLM", False, f"la clé n'a pas accès à {REFERENCE_MODEL}")
+    except anthropic.APIConnectionError:
+        return Result("LLM", False, "API Anthropic injoignable (réseau)")
+    except anthropic.APIStatusError as error:
+        return Result("LLM", False, f"API Anthropic : erreur {error.status_code}")
+    return Result("LLM", True, f"API Anthropic · {REFERENCE_MODEL} (modèle de référence)")
+
+
+def check_ollama(*, blocking: bool) -> Result:
     from vantage.rag.generation import dev_model
 
-    if os.environ.get("VANTAGE_LLM", "ollama") == "mistral":
-        if not os.environ.get("MISTRAL_API_KEY"):
-            return Result("LLM", False, "VANTAGE_LLM=mistral mais MISTRAL_API_KEY absente")
-        try:
-            response = httpx.get("https://api.mistral.ai/v1/models",
-                                 headers={"Authorization": f"Bearer {os.environ['MISTRAL_API_KEY']}"}, timeout=10)
-            response.raise_for_status()
-        except httpx.HTTPError as error:
-            return Result("LLM", False, f"API Mistral injoignable ou clé refusée : {error}")
-        return Result("LLM", True, "API Mistral (modèle de référence)")
-
+    name = "LLM" if blocking else "LLM de dev"
     model = dev_model()
     base = model.base_url.removesuffix("/v1")
     try:
         tags = httpx.get(f"{base}/api/tags", timeout=5).json()
     except httpx.HTTPError:
-        return Result("LLM", False, f"Ollama injoignable sur {base} (systemctl status ollama)")
+        return Result(name, False, f"Ollama injoignable sur {base} (systemctl status ollama)", blocking=blocking)
     names = {m["name"] for m in tags.get("models", [])}
     if model.model not in names:
-        return Result("LLM", False, f"modèle {model.model} absent d'Ollama (ollama pull {model.model})")
-    return Result("LLM", True, f"Ollama · {model.model} (développement)")
+        return Result(name, False, f"modèle {model.model} absent d'Ollama (ollama pull {model.model})", blocking=blocking)
+    return Result(name, True, f"Ollama · {model.model} (développement, --llm ollama)", blocking=blocking)
 
 
 def check_gpu() -> Result:
@@ -153,7 +171,10 @@ def run_checks(*, fix: bool, ports: dict[int, str]) -> list[Result]:
         add(check_index(chunk_count), lambda: check_index(chunk_count))
     else:
         results.append(Result("Index Qdrant", False, "non vérifié : corpus invalide"))
-    results += [check_llm(), check_gpu()]
+    results.append(check_llm())
+    if os.environ.get("VANTAGE_LLM", "claude") != "ollama":
+        results.append(check_ollama(blocking=False))  # optional: only needed for --llm ollama
+    results.append(check_gpu())
     add(check_web(), check_web)
     results += [check_port(port, name) for port, name in ports.items()]
     return results
@@ -177,6 +198,7 @@ def report(results: list[Result]) -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv(find_dotenv(usecwd=True))
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--fix", action="store_true", help="restore sources, build the index, install web deps")
     parser.add_argument("--api-port", type=int, default=int(os.environ.get("API_PORT", 8000)))

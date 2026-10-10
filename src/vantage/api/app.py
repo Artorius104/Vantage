@@ -13,6 +13,7 @@ import json
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
 
+from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -86,4 +87,5 @@ def _event(name: str, data) -> str:
     return f"event: {name}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+load_dotenv(find_dotenv(usecwd=True))  # ANTHROPIC_API_KEY from .env, when uvicorn imports this module
 app = create_app()

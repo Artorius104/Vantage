@@ -20,11 +20,11 @@ Usage : ./vantage <commande> [options]
   setup            Installe et répare ce qui manque : venv Python, dépendances, sources, index, npm.
   start [options]  setup + check, puis lance l'API et l'interface ; Ctrl+C arrête tout.
       --prod           interface compilée (next build + start) au lieu du mode développement
-      --llm mistral    modèle de référence (MISTRAL_API_KEY requise) au lieu de Ministral local
+      --llm ollama     Ministral 8B en local (développement) au lieu de Claude Haiku, le modèle de référence
   index            Reconstruit l'index Qdrant (embeddings bge-m3).
   test             Tests Python, lint et types du frontend.
 
-Variables : API_PORT (8000), WEB_PORT (3000), QDRANT_URL, VANTAGE_LLM, MISTRAL_API_KEY.
+Variables : API_PORT (8000), WEB_PORT (3000), QDRANT_URL, VANTAGE_LLM, ANTHROPIC_API_KEY (lue dans .env).
 EOF
 }
 
@@ -74,7 +74,7 @@ start() {
   while (($#)); do
     case "$1" in
       --prod) prod=true ;;
-      --llm) shift; export VANTAGE_LLM="${1:?--llm attend mistral ou ollama}" ;;
+      --llm) shift; export VANTAGE_LLM="${1:?--llm attend claude ou ollama}" ;;
       *) fail "option inconnue : $1" ;;
     esac
     shift
@@ -105,7 +105,7 @@ start() {
   wait_for "http://localhost:$WEB_PORT" "L'interface" 120
   echo
   bold "Vantage est prêt : http://localhost:$WEB_PORT   (API : http://localhost:$API_PORT/docs)"
-  bold "LLM : ${VANTAGE_LLM:-ollama} · Ctrl+C pour tout arrêter"
+  bold "LLM : ${VANTAGE_LLM:-claude} · Ctrl+C pour tout arrêter"
   wait -n "${pids[@]}" || true
   $interrupted || fail "Un service s'est arrêté ; arrêt de Vantage."
 }
